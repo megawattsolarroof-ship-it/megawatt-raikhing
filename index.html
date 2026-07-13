@@ -331,7 +331,7 @@
 
     async function loadTodayData() {
       try {
-        const keyQS = '&key=' + encodeURIComponent(APP_KEY);
+        const keyQS = '&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY);
         const res = await fetch(GAS_URL + "?action=getTodayAttendance" + keyQS);
         const data = await res.json();
         renderTable('attendanceBody', data);

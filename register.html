@@ -295,7 +295,7 @@
 
   async function loadKnownFaces() {
     try {
-      const data = await fetch(API_URL + '?action=getKnownFaces&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
+      const data = await fetch(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
       if (Array.isArray(data)) {
         knownFaces = data.map(u => ({ name: u.label, descriptor: new Float32Array(u.descriptor) }));
       }
@@ -392,7 +392,7 @@
       for (const capture of captures) {
         const res = await fetch(API_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'registerUser', key: APP_KEY, name, descriptor: Array.from(capture.descriptor) })
+          body: JSON.stringify({ action: 'registerUser', site: APP_SITE, key: APP_KEY, name, descriptor: Array.from(capture.descriptor) })
         });
         const data = await res.json();
         if (!(data.status === 'success' || data.success)) throw new Error(data.message || 'เกิดข้อผิดพลาดจากระบบหลังบ้าน');

@@ -5,6 +5,7 @@
 //  หรือจะไปกรอกในหน้า config.html ของเว็บก็ได้ (เก็บใน localStorage)
 // ============================================================
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyv2qNse7C4EV3Klw8JxhsozdYkpz6hM1F9pmGIl7v5JW7qJHTPEQ9TdiNfp5AX4Zkb/exec';
+const APP_SITE = 'raikhing';
 
 // ============================================================
 //  ลิงก์ตั้งค่าอัตโนมัติ (สำหรับส่งให้ช่าง/พนักงานครั้งแรก)

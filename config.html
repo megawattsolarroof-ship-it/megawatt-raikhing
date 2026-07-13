@@ -283,7 +283,7 @@
   }
 
   function loadGpsConfig(apiUrl) {
-    fetch(apiUrl + '?action=getConfig&scope=attendance&key=' + encodeURIComponent(appKey()))
+    fetch(apiUrl + '?action=getConfig&scope=attendance&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(appKey()))
       .then(r => r.json())
       .then(config => {
         if (config.error) return;
@@ -326,6 +326,7 @@
         body: JSON.stringify({
           action: 'saveConfig',
           scope: 'attendance',
+          site: APP_SITE,
           key: key,
           adminKey: ADMIN_SECRET_KEY,
           lat, lng, radius

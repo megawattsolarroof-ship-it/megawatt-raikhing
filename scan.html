@@ -414,7 +414,7 @@
           currentLng = pos.coords.longitude;
 
           try {
-            const config = await fetch(API_URL + '?action=getConfig&scope=attendance&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
+            const config = await fetch(API_URL + '?action=getConfig&scope=attendance&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
 
             if (config.error === 'unauthorized') {
               reject(new Error(config.message || 'App Key ไม่ถูกต้อง'));
@@ -473,7 +473,7 @@
   async function loadFaceDatabase() {
     mainStatus.innerText = '3/4 โหลดฐานข้อมูลพนักงาน...';
     try {
-      const data = await fetch(API_URL + '?action=getKnownFaces&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
+      const data = await fetch(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
       if (data && data.error === 'unauthorized') return showError(data.message || 'App Key ไม่ถูกต้อง');
       if (!data || data.length === 0) return showError('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
 
@@ -495,7 +495,7 @@
   // ดึงรายชื่อคนที่สแกนเข้าแล้ววันนี้ — ใช้บอกใน modal ว่าครั้งนี้เป็น "เข้างาน" หรือ "ออกงาน"
   async function loadTodayStatus() {
     try {
-      const rows = await fetch(API_URL + '?action=getTodayAttendance&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
+      const rows = await fetch(API_URL + '?action=getTodayAttendance&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
       checkedInToday = {};
       if (Array.isArray(rows)) {
         rows.forEach(r => { if (r['ชื่อ']) checkedInToday[r['ชื่อ']] = true; });
@@ -644,6 +644,7 @@
         method: 'POST',
         body: JSON.stringify({
             action: 'logAttendance',
+            site: APP_SITE,
             key: APP_KEY,
             name: currentMatch,
             lat: currentLat,
