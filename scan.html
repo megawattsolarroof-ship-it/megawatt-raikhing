@@ -431,6 +431,7 @@
   let currentMatch  = null;
   let currentLat    = null;
   let currentLng    = null;
+  let currentAccuracy = 0;
   let confirmName   = null;
   let confirmCount  = 0;
 
@@ -455,10 +456,11 @@
         reject(new Error('Browser ไม่รองรับ GPS'));
         return;
       }
-      navigator.geolocation.getCurrentPosition(
+      getHighAccuracyPosition(
         async pos => {
           currentLat = pos.coords.latitude;
           currentLng = pos.coords.longitude;
+          currentAccuracy = Number(pos.coords.accuracy) || 0;
 
           try {
             const config = await fetch(API_URL + '?action=getConfig&scope=attendance&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
@@ -478,8 +480,9 @@
             }
 
             const dist = haversineKm(currentLat, currentLng, config.lat, config.lng);
+            const accuracyAllowanceKm = Math.min(currentAccuracy, 50) / 1000;
 
-            if (dist <= config.radius) {
+            if (dist <= Number(config.radius) + accuracyAllowanceKm) {
               gpsStatus.textContent = '📍 GPS: OK (ห่างเป้าหมาย ' + dist.toFixed(3) + ' km)';
               gpsStatus.style.color = '#3DE0C6';
               gpsStatus.style.fontWeight = '600';
@@ -499,6 +502,31 @@
         },
         () => reject(new Error('กรุณาเปิด GPS (Location Service)'))
       );
+    });
+  }
+
+  function getHighAccuracyPosition(success, error) {
+    let bestPosition = null;
+    let finished = false;
+    let watchId = null;
+    const finish = (position, geoError) => {
+      if (finished) return;
+      finished = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timerId);
+      if (position) success(position);
+      else error(geoError);
+    };
+    const timerId = setTimeout(() => finish(bestPosition, { code: 3 }), 7000);
+    watchId = navigator.geolocation.watchPosition(position => {
+      if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) bestPosition = position;
+      if (position.coords.accuracy <= 50) finish(position);
+    }, geoError => {
+      if (geoError.code === 1) finish(null, geoError);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 7000,
+      maximumAge: 0
     });
   }
 
