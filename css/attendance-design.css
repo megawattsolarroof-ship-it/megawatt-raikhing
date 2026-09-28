@@ -1,0 +1,144 @@
+/* Presentation only. Existing CI variables, logos, scripts and data contracts remain unchanged. */
+body.aio-design {
+  --ui-paper: #fff;
+  --ui-canvas: #F4F4F4;
+  --ui-ink: var(--bg);
+  --ui-muted: color-mix(in srgb, var(--bg) 65%, #fff);
+  --ui-line: color-mix(in srgb, var(--bg) 10%, #fff);
+  --ui-shadow: 0 16px 42px color-mix(in srgb, var(--bg) 8%, transparent);
+  background: var(--ui-canvas); color: var(--ui-ink);
+  padding: 0 20px 56px; position: relative; isolation: isolate;
+  font-family: 'Prompt', sans-serif; -webkit-font-smoothing: antialiased;
+}
+.aio-design::before {
+  content: ''; position: absolute; z-index: -1; top: 0; left: 0; right: 0; height: 310px;
+  background: radial-gradient(ellipse at 95% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 55%),
+    linear-gradient(125deg, var(--bg), var(--surface) 65%, var(--surface-2));
+}
+.aio-design .header {
+  width: 100%; padding: 48px 0 64px; margin: 0; animation: none;
+}
+.aio-design .logo-icon { margin-bottom: 18px; }
+.aio-design .logo-icon img { width: 80px; height: 80px; object-fit: contain; border-radius: 20px; box-shadow: 0 12px 28px #0003; }
+.aio-design h1 { font-size: 24px; line-height: 1.4; color: var(--text); text-shadow: none; }
+.aio-design .subtitle { font-size: 11px; line-height: 1.8; letter-spacing: .04em; color: var(--muted); }
+.aio-design .header::after, .aio-design .page-header::after, .aio-design .top-bar::after {
+  content: ''; display: block; width: 44px; height: 3px; margin: 17px auto 0; border-radius: 5px; background: var(--accent);
+}
+.aio-design .menu-cards { max-width: 460px; gap: 12px; margin-top: -32px; position: relative; }
+.aio-design .btn-menu {
+  padding: 16px; gap: 15px; min-height: 88px; border: 1px solid var(--ui-line);
+  background: var(--ui-paper); border-radius: 22px; box-shadow: 0 8px 24px #00000008;
+  animation: none; transition: transform .2s, box-shadow .2s; color: var(--ui-ink);
+}
+.aio-design .btn-menu:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: var(--ui-shadow); }
+.aio-design .card-icon, .aio-design .section-icon {
+  width: 52px; height: 52px; border-radius: 16px; padding: 0;
+  background: linear-gradient(135deg, var(--surface-2), var(--bg)); color: var(--accent);
+  border: 1px solid var(--border); box-shadow: 0 8px 18px color-mix(in srgb, var(--bg) 18%, transparent);
+}
+.aio-design .card-icon svg { width: 25px; height: 25px; }
+.aio-design .card-text { min-width: 0; }
+.aio-design .card-title { color: var(--ui-ink); font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.aio-design .card-desc { color: var(--ui-muted); font-size: 11px; line-height: 1.7; }
+.aio-design .card-arrow { color: var(--ui-muted); font-size: 24px; }
+.aio-design .btn-menu:hover .card-arrow { color: var(--ui-ink); }
+.aio-design .api-warning { position: relative; margin: 0 auto 44px; background: var(--surface); }
+.aio-design .report-stack { width: 100%; max-width: 860px; margin-top: 28px; display: grid; gap: 20px; animation: none; }
+.aio-design .report-card { background: var(--ui-paper); border: 1px solid var(--ui-line); padding: 20px; border-radius: 26px; box-shadow: var(--ui-shadow); overflow: hidden; }
+.aio-design .report-card > .absolute { display: none; }
+.aio-design .report-heading { background: transparent; padding: 0 0 16px; border: 0; }
+.aio-design .report-heading h3 { color: var(--ui-ink); font-size: 14px; gap: 10px; line-height: 1.8; }
+.aio-design .report-heading h3 > span:first-child { color: var(--ui-ink); }
+.aio-design .report-heading [id*="DateLabel"] {
+  margin-left: auto; border: 1px solid var(--ui-line); border-radius: 99px; padding: 3px 10px;
+  color: var(--border-strong); background: color-mix(in srgb, var(--accent) 9%, #fff); font-size: 11px;
+}
+.aio-design .report-card .custom-scrollbar { border: 1px solid var(--ui-line); border-radius: 16px; overflow-x: auto; }
+.aio-design .report-card table { width: 100%; min-width: 510px; border-collapse: collapse; font-size: 12px; }
+.aio-design .report-card thead tr { background: color-mix(in srgb, var(--bg) 4%, #fff); }
+.aio-design .report-card th { color: var(--border-strong); font-size: 11px; padding: 13px 12px; font-weight: 600; border: 0; white-space: nowrap; width: auto; }
+.aio-design .report-card tbody { background: var(--ui-paper); color: var(--ui-ink); }
+.aio-design .report-card tbody tr:hover { background: color-mix(in srgb, var(--bg) 2%, #fff); }
+.aio-design .report-card td { padding: 13px 12px; border: 0; border-top: 1px solid var(--ui-line); color: var(--ui-ink); font-size: 12px; }
+.aio-design .report-card td[colspan] { padding: 28px 16px; color: var(--ui-muted); }
+.aio-design .report-card td a, .aio-design .report-card td button { color: var(--border-strong); font-size: 12px; text-underline-offset: 4px; }
+.aio-design .report-card td.text-red-400 { color: #b91c1c; }
+.aio-design .report-card td.text-amber-400 { color: #92400e; }
+.aio-design .report-card td:nth-child(2):not([colspan]) { font-weight: 600; color: var(--border-strong); }
+.aio-design .custom-scrollbar::-webkit-scrollbar-track { background: var(--ui-canvas); }
+.aio-design .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--muted); }
+/* The existing controls retain their IDs, visibility rules, disabled states and event handlers. */
+.aio-design .page-wrap, .aio-design > .container { width: 100%; max-width: 520px; animation: none; }
+.aio-design .page-header, .aio-design .top-bar {
+  position: relative; padding: 68px 4px 52px; margin: 0 0 0; text-align: center;
+}
+.aio-design .back-btn { position: absolute; top: 18px; left: 0; margin: 0; padding: 9px 13px; font-size: 12px; border-radius: 99px; background: #ffffff12; color: var(--text); border: 1px solid #ffffff30; box-shadow: none; }
+.aio-design .page-header > img { width: 66px !important; height: 66px !important; object-fit: contain !important; margin-bottom: 14px !important; border-radius: 16px !important; box-shadow: none !important; }
+.aio-design .page-header h2, .aio-design .scan-heading h2 { color: var(--text); font-size: 21px; line-height: 1.5; text-shadow: none; }
+.aio-design .page-header .instruction { color: var(--muted); font-size: 12px; line-height: 1.8; max-width: 420px; margin: 8px auto 0; }
+.aio-design .page-subtitle { color: var(--muted); font-size: 12px; }
+.aio-design .top-bar { display: block; width: 100%; }
+.aio-design .scan-brand { flex-direction: column; justify-content: center; gap: 12px; }
+.aio-design .scan-logo { width: 66px; height: 66px; flex-basis: 66px; object-fit: contain; border-radius: 16px; box-shadow: none; }
+.aio-design .scan-heading { text-align: center; }
+.aio-design .scan-kicker { color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+.aio-design .status-area, .aio-design .card {
+  background: var(--ui-paper); border: 1px solid var(--ui-line); border-radius: 24px; box-shadow: var(--ui-shadow); padding: 22px;
+}
+.aio-design .status-area { position: relative; margin-top: -28px; margin-bottom: 18px; }
+.aio-design #main-status { color: var(--ui-ink); font-size: 14px; line-height: 1.8; }
+.aio-design #gps-status { color: var(--ui-muted); font-size: 12px; }
+.aio-design .video-container, .aio-design .video-wrapper { border-radius: 24px; border-color: var(--border); box-shadow: var(--ui-shadow); }
+.aio-design .video-container { margin-top: 0; }
+.aio-design.aio-config .card:first-of-type { margin-top: -24px; position: relative; }
+.aio-design .card { margin-bottom: 18px; }
+.aio-design .section-header { border-color: var(--ui-line); margin-bottom: 20px; padding-bottom: 16px; }
+.aio-design .section-title-text { color: var(--ui-ink); font-size: 14px; }
+.aio-design label { color: var(--ui-muted); font-size: 11px; letter-spacing: .04em; }
+.aio-design input:not([type="button"]):not([type="submit"]), .aio-design textarea {
+  background: var(--ui-paper); color: var(--ui-ink); border: 1px solid color-mix(in srgb, var(--bg) 18%, #fff);
+  border-radius: 14px; padding: 14px 15px; font-size: 14px; box-shadow: none;
+}
+.aio-design input::placeholder, .aio-design textarea::placeholder { color: var(--ui-muted); opacity: .8; }
+.aio-design input:focus, .aio-design textarea:focus { border-color: var(--border-strong); outline: 3px solid color-mix(in srgb, var(--border-strong) 15%, transparent); }
+.aio-design .note { color: var(--ui-muted); font-size: 11px; line-height: 1.8; }
+.aio-design .btn-get-loc, .aio-design .btn-back-bottom { color: var(--border-strong); background: var(--ui-paper); border-color: var(--ui-line); }
+.aio-design .btn-save, .aio-design #btnSave, .aio-design #btnStart, .aio-design #btnCamera {
+  border-radius: 16px; background: linear-gradient(135deg, var(--surface-2), var(--bg)); color: var(--accent); border: 1px solid var(--border); box-shadow: 0 8px 20px #00000012; font-weight: 600; font-size: 14px; min-height: 50px;
+}
+.aio-design #btnSave:disabled { background: var(--ui-line); color: var(--ui-muted); box-shadow: none; border-color: var(--ui-line); }
+.aio-design.aio-register .name-section { position: relative; margin-top: -24px; padding: 20px; background: var(--ui-paper); border: 1px solid var(--ui-line); border-radius: 22px; box-shadow: var(--ui-shadow); }
+.aio-design.aio-register .name-section input { margin: 0; }
+.aio-design #status { color: var(--ui-muted); font-size: 13px; line-height: 1.7; text-align: center; }
+.aio-design .dot { width: 9px; height: 9px; background: var(--ui-line); }
+.aio-design .dot.active { background: var(--border-strong); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 15%, transparent); }
+.aio-design :is(a, button, input):focus-visible { outline: 3px solid var(--border-strong); outline-offset: 4px; }
+.aio-design .modal-content { border-radius: 26px; box-shadow: 0 24px 70px #0005; }
+.aio-design #main-status, .aio-design #gps-status, .aio-design #status { color: var(--border-strong) !important; }
+.aio-design #main-status[style*="255, 107, 107"], .aio-design #gps-status[style*="255, 107, 107"], .aio-design #status[style*="255, 107, 107"] { color: #b91c1c !important; }
+.aio-design.aio-register .form-section { background: var(--ui-paper); border: 1px solid var(--ui-line); box-shadow: var(--ui-shadow); border-radius: 22px; }
+.aio-design.aio-register .msg-success { color: var(--border-strong); }
+.aio-design #btnStart, .aio-design #btnCamera { width: 100%; margin-top: 0; margin-bottom: 16px; }
+.aio-design .report-card table { min-width: 0; }
+@media (max-width: 600px) {
+  body.aio-design { padding-inline: 16px; }
+  .aio-design .header { padding-top: 34px; padding-bottom: 56px; }
+  .aio-design h1 { font-size: 21px; }
+  .aio-design .subtitle { font-size: 10px; max-width: 320px; margin-inline: auto; }
+  .aio-design .btn-menu { min-height: 86px; padding: 14px; gap: 12px; }
+  .aio-design .card-icon { width: 48px; height: 48px; border-radius: 14px; }
+  .aio-design .card-title { font-size: 14px; }
+  .aio-design .card-desc { font-size: 10px; }
+  .aio-design .report-card { padding: 16px; border-radius: 23px; }
+  .aio-design .report-heading h3 { font-size: 12px; gap: 6px; }
+  .aio-design .report-heading [id*="DateLabel"] { font-size: 10px; }
+  .aio-design .card { padding: 20px; }
+  .aio-design.aio-index::before { height: 275px; }
+  .aio-design .report-card th, .aio-design .report-card td, .aio-design .report-card td a, .aio-design .report-card td button { padding: 11px 5px; font-size: 10px; }
+  .aio-design .report-card td a, .aio-design .report-card td button { padding: 0; }
+  .aio-design .report-card td:first-child:not([colspan]) { min-width: 75px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aio-design .btn-menu, .aio-design .card-arrow, .aio-design .back-btn { transition: none; }
+}
