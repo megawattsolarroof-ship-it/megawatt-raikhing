@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#06151D">
   <script src="js/api-config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <script src="js/face-support.js?v=20260928-r2"></script>
   <style>
     :root {
       --bg: #06151D;
@@ -211,6 +211,11 @@
     /* Animations */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin   { to { transform: rotate(360deg); } }
+    #btnCamera {
+      background: var(--accent); color: var(--bg); border: 0; border-radius: 16px;
+      padding: 14px 24px; margin: 12px 0; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    #btnCamera:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
   </style>
   <link rel="stylesheet" href="css/attendance-design.css?v=20260928-1">
 </head>
@@ -234,9 +239,11 @@
     <div class="dot" id="dot3"></div>
   </div>
 
-  <div id="status">
+  <div id="status" role="status" aria-live="polite">
     <span class="spinner"></span> กำลังโหลด AI Model...
   </div>
+
+  <button type="button" id="btnCamera" hidden>📷 เปิดกล้อง</button>
 
   <div class="video-wrapper">
     <video id="video" autoplay muted playsinline></video>
@@ -265,6 +272,31 @@
   // ระยะห่างขั้นต่ำจากใบหน้า "คนอื่น" — ถ้าใกล้กว่านี้ เสี่ยงสแกนแล้วชื่อสลับกัน
   const DUPLICATE_DISTANCE = 0.42;
 
+  let modelsReady = false;
+  let initBusy = false;
+  let captureGeneration = 0;
+  let savingRegistration = false;
+  let registrationComplete = false;
+  const btnCamera = document.getElementById('btnCamera');
+  const camera = FaceSupport.createCamera(video, registrationCameraError);
+
+  function registrationCameraError(message, preserveStream = false) {
+    if (!preserveStream) camera.stop();
+    if (savingRegistration || registrationComplete) return;
+    captureGeneration++;
+    isCapturing = false;
+    saveCounter = 0;
+    updateDots();
+    btnSave.disabled = true;
+    btnSave.textContent = '🎥 เริ่มสแกนใบหน้า';
+    statusDiv.textContent = '❌ ' + message;
+    statusDiv.style.color = '#ff6b6b';
+    btnCamera.textContent = '📷 เปิดกล้องใหม่';
+    btnCamera.onclick = startCamera;
+    btnCamera.hidden = false;
+    btnCamera.disabled = false;
+  }
+
   if (!API_URL) {
     statusDiv.innerHTML = '<span style="color:#ff6b6b">❌ ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a></span>';
   } else {
@@ -279,41 +311,50 @@
   }
 
   async function initModels() {
+    if (initBusy) return;
+    initBusy = true;
+    btnCamera.hidden = true;
+    btnSave.disabled = true;
+    statusDiv.textContent = 'กำลังโหลดระบบสแกน...';
+    statusDiv.style.color = 'var(--text)';
     try {
-      const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      loadKnownFaces();
-      startCamera();
-    } catch (e) {
-      statusDiv.textContent = '❌ โหลด AI Model ล้มเหลว: ' + e.message;
+      await FaceSupport.loadModels();
+      statusDiv.textContent = 'กำลังโหลดข้อมูลพนักงาน...';
+      await loadKnownFaces();
+      modelsReady = true;
+      // Explicit tap also supports browsers that require a playback gesture.
+      statusDiv.textContent = 'ระบบพร้อม กรุณาแตะเปิดกล้อง';
+      btnCamera.textContent = '📷 เปิดกล้อง';
+      btnCamera.onclick = startCamera;
+      btnCamera.disabled = false;
+      btnCamera.hidden = false;
+    } catch (error) {
+      statusDiv.textContent = '❌ เตรียมระบบไม่สำเร็จ: ' + error.message;
       statusDiv.style.color = '#ff6b6b';
+      btnCamera.textContent = '↻ ลองเตรียมระบบใหม่';
+      btnCamera.onclick = initModels;
+      btnCamera.disabled = false;
+      btnCamera.hidden = false;
+    } finally {
+      initBusy = false;
     }
   }
 
   async function loadKnownFaces() {
-    try {
-      const data = await fetch(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY)).then(r => r.json());
-      if (Array.isArray(data)) {
-        knownFaces = data.map(u => ({ name: u.label, descriptor: new Float32Array(u.descriptor) }));
-      }
-    } catch (e) { /* โหลดไม่ได้ก็ยังลงทะเบียนได้ แค่ไม่มีตัวเช็กหน้าซ้ำ */ }
+    const data = await FaceSupport.fetchJSON(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY));
+    if (!Array.isArray(data)) throw new Error('ข้อมูลพนักงานไม่ถูกต้อง กรุณาลองใหม่');
+    knownFaces = data.map(u => ({ name: u.label, descriptor: new Float32Array(u.descriptor) }));
   }
 
-  function startCamera() {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then(stream => {
-        video.srcObject = stream;
-        statusDiv.innerText = '';
-        btnSave.disabled = false;
-      })
-      .catch(err => {
-        statusDiv.textContent = '❌ เปิดกล้องไม่ได้: ' + err.message;
-        statusDiv.style.color = '#ff6b6b';
-      });
+  async function startCamera() {
+    if (!modelsReady || isCapturing || savingRegistration || registrationComplete) return;
+    btnCamera.hidden = true;
+    btnSave.disabled = true;
+    statusDiv.textContent = 'กำลังเปิดกล้อง รอภาพจากกล้อง...';
+    statusDiv.style.color = 'var(--text)';
+    if (!(await camera.start())) return;
+    statusDiv.textContent = 'กล้องพร้อม กรุณากรอกชื่อแล้วเริ่มสแกนใบหน้า';
+    btnSave.disabled = false;
   }
 
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -326,18 +367,20 @@
     return (nose[3].x - faceCenter) / faceWidth;
   }
 
-  async function detectGoodFace() {
-    const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+  async function detectGoodFace(run) {
+    const detection = await FaceSupport.detect(video, () => run === captureGeneration && isCapturing && camera.isReady());
+    if (run !== captureGeneration || !camera.isReady()) throw new Error('กล้องหยุด กรุณาเปิดกล้องใหม่');
     return detection && detection.detection.score >= 0.7 ? detection : null;
   }
 
   async function capturePose(test, instruction, timeoutMs = 25000) {
     statusDiv.textContent = instruction;
     const started = Date.now();
+    const run = captureGeneration;
     let stableFrames = 0;
     let latest = null;
-    while (isCapturing && Date.now() - started < timeoutMs) {
-      const detection = await detectGoodFace();
+    while (isCapturing && run === captureGeneration && Date.now() - started < timeoutMs) {
+      const detection = await detectGoodFace(run);
       if (detection && test(faceTurn(detection))) {
         latest = detection;
         stableFrames++;
@@ -353,7 +396,9 @@
   async function startAutoCapture() {
     const name = document.getElementById('username').value.trim();
     if (!name) return alert('กรุณาใส่ชื่อก่อน');
-    if (isCapturing) return;
+    if (isCapturing || savingRegistration || registrationComplete) return;
+    if (!camera.isReady()) return registrationCameraError('กรุณาเปิดกล้องให้มีภาพก่อนสแกน');
+    const run = ++captureGeneration;
     isCapturing = true;
     btnSave.disabled = true;
     btnSave.innerHTML = '⏳ กำลังสแกน...';
@@ -388,6 +433,8 @@
       captures.push(otherSide);
       saveCounter = 3;
       updateDots();
+      if (run !== captureGeneration || !camera.isReady()) throw new Error('กล้องหยุด กรุณาเปิดกล้องใหม่');
+      savingRegistration = true;
       statusDiv.textContent = 'กำลังบันทึกข้อมูล...';
 
       for (const capture of captures) {
@@ -401,18 +448,28 @@
 
       statusDiv.textContent = '';
       msgDiv.innerHTML = '<span class="msg-success">🎉 ลงทะเบียนใบหน้าสำเร็จ!</span>';
+      registrationComplete = true;
+      camera.stop();
       btnSave.innerHTML = '✅ ลงทะเบียนเรียบร้อย';
       document.getElementById('username').disabled = true;
       isCapturing = false;
     } catch (e) {
+      if (run !== captureGeneration) return;
       isCapturing = false;
       saveCounter = 0;
       updateDots();
       statusDiv.textContent = '';
       msgDiv.textContent = '❌ บันทึกล้มเหลว: ' + e.message;
       msgDiv.className = 'msg-error';
-      btnSave.disabled = false;
+      btnSave.disabled = !camera.isReady();
       btnSave.innerHTML = '🎥 เริ่มสแกนใบหน้าใหม่';
+      if (!camera.isReady()) {
+        btnCamera.textContent = '📷 เปิดกล้องใหม่';
+        btnCamera.onclick = startCamera;
+        btnCamera.hidden = false;
+      }
+    } finally {
+      if (run === captureGeneration) savingRegistration = false;
     }
   }
 </script>
