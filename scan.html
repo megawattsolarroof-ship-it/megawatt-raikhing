@@ -349,6 +349,7 @@
     @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
   </style>
   <link rel="stylesheet" href="css/attendance-design.css?v=20260928-1">
+  <link rel="stylesheet" href="css/manual-attendance.css?v=20261029-m1">
 </head>
 <body class="aio-design aio-scan">
 <div class="page-wrap">
@@ -374,6 +375,29 @@
   </div>
 
   <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
+
+  <section class="manual-attendance" aria-label="ลงเวลาเมื่อสแกนหน้าไม่ได้">
+    <button type="button" id="btnManualAttendance" class="manual-attendance-toggle" aria-expanded="false" aria-controls="manualAttendancePanel">สแกนไม่ได้? ลงเวลาโดยไม่สแกนหน้า</button>
+    <div id="manualAttendancePanel" class="manual-attendance-panel" hidden>
+      <h3>ลงเวลาโดยไม่สแกนหน้า</h3>
+      <p>เลือกชื่อของคุณแล้วกดยืนยัน ระบบจะบันทึกเวลาทันทีพร้อมหมายเหตุว่าไม่ได้สแกนหน้า และยังตรวจ GPS ตามพื้นที่ที่กำหนด</p>
+      <p id="manualModeHint"></p>
+      <form id="manualAttendanceForm">
+        <label for="manualEmployee">ชื่อพนักงาน</label>
+        <select id="manualEmployee" required aria-describedby="manualModeHint"><option value="">เลือกชื่อของคุณ</option></select>
+        <label for="manualNote">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+        <input id="manualNote" type="text" maxlength="300" placeholder="เช่น กล้องเปิดไม่ได้ หรือสแกนไม่พบหน้า">
+        <button id="manualSubmit" class="manual-submit" type="submit" disabled>ยืนยันลงเวลาเข้า–ออกงาน</button>
+        <div class="manual-secondary">
+          <button id="manualReloadNames" type="button">โหลดรายชื่อใหม่</button>
+          <button id="manualClose" type="button">กลับไปสแกนหน้า</button>
+        </div>
+      </form>
+      <p id="manualStatus" role="status" aria-live="polite" tabindex="-1"></p>
+      <a id="manualSavedLink" href="index.html" hidden>ดูรายการลงเวลา</a>
+      <p><a href="index.html">ตรวจตารางลงเวลา</a></p>
+    </div>
+  </section>
 
   <div class="video-container">
     <div class="scanner-frame">
@@ -408,6 +432,7 @@
 </div>
 
 <script src="js/attendance-recovery.js?v=20260928-r3"></script>
+<script src="js/manual-attendance.js?v=20261029-m1"></script>
 <script>
   const API_URL        = localStorage.getItem('gasApiUrl') || GAS_API_URL;
   const APP_KEY        = localStorage.getItem('appKey') || '';
@@ -822,6 +847,35 @@
   }
 
   function deg2rad(deg) { return deg * Math.PI / 180; }
+
+  ManualAttendance.mount({
+    endpoint: API_URL,
+    target: APP_SITE,
+    siteCheckin: false,
+    busy: () => savingAttendance,
+    lock: value => { savingAttendance = value; },
+    open: () => {
+      stopScanLoop(); camera.stop(); confirmModal.style.display = 'none'; currentMatch = null;
+    },
+    close: () => { if (systemReady) cancelAttendance(); else void init(); },
+    read: action => {
+      const params = { action, key: APP_KEY, site: APP_SITE };
+      if (action === 'getConfig' && !false) params.scope = 'attendance';
+      return FaceSupport.fetchJSON(API_URL + '?' + new URLSearchParams(params));
+    },
+    prepareLocation: async () => {
+      const params = { action: 'getConfig', key: APP_KEY, site: APP_SITE };
+      if (!false) params.scope = 'attendance';
+      configPromise = FaceSupport.fetchJSON(API_URL + '?' + new URLSearchParams(params));
+      configPromise.catch(() => {});
+      await checkGPS();
+      return { lat: currentLat, lng: currentLng, safeRetry: idempotentBackend };
+    },
+    send: (name, note, location) => AttendanceRecovery.send(fetch, API_URL, {
+      action: 'logAttendance', key: APP_KEY, site: APP_SITE,
+      name, note, lat: location.lat, lng: location.lng
+    }, location.safeRetry)
+  });
 </script>
 </body>
 </html>
