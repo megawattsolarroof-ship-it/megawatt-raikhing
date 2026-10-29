@@ -15,6 +15,9 @@
     const mode = document.getElementById('manualModeHint');
     let opened = false, saving = false, saved = false, loading = false, names = [], generation = 0, today = null;
     let protocol = false;
+    const normalize = value => String(value || '').normalize('NFC').trim().replace(/\s+/g, ' ');
+    const selectedName = () => { const matches = names.filter(name => normalize(name) === normalize(select.value)); return matches.length === 1 ? matches[0] : ''; };
+    const photo = ManualPhoto.mount({name:selectedName, changed:() => sync(), upload:options.uploadPhoto});
     const pending = () => AttendanceRecovery.pending();
     const ours = entry => entry && entry.endpoint === options.endpoint && entry.target === options.target &&
       typeof entry.payload?.note === 'string' && entry.payload.note.startsWith(MARKER);
@@ -32,10 +35,14 @@
     function sync() {
       const entry = pending();
       const blocked = entry && (!ours(entry) || !protocol || Date.now() - Date.parse(entry.createdAt) > 3600000);
+      const validName = selectedName();
+      document.getElementById('manualNameHint').textContent = validName ? 'พบชื่อ: ' + validName : select.value.trim() && names.length ? 'ไม่พบชื่อที่ตรง กรุณาตรวจชื่อ–นามสกุลตามที่ลงทะเบียน' : 'ชื่อจะต้องตรงกับรายชื่อพนักงานของสาขานี้';
+      select.setAttribute('aria-invalid', String(!!select.value.trim() && !!names.length && !validName));
       select.disabled = saving || !!entry || loading || saved;
       note.disabled = saving || !!entry || saved;
       close.disabled = saving; retry.disabled = saving || loading;
-      submit.disabled = saving || saved || loading || !names.includes(select.value) || !!blocked;
+      submit.disabled = saving || saved || loading || !selectedName() || !!blocked || (!entry && !photo.valid());
+      photo.lock(saving || saved || !!entry);
       submit.textContent = saving ? 'กำลังบันทึก...' : label();
       if (blocked) say('มีรายการเดิมที่ยังไม่ทราบผล กรุณาตรวจตารางลงเวลาก่อนเริ่มรายการใหม่', true);
     }
@@ -50,15 +57,14 @@
         // Manual attendance needs the name only, even when that employee's descriptor is malformed.
         names = [...new Set(rows.filter(r => r && typeof r.label === 'string').map(r => r.label.trim()).filter(Boolean))]
           .sort((a,b) => a.localeCompare(b,'th'));
-        select.replaceChildren(new Option('เลือกชื่อของคุณ', ''));
-        names.forEach(name => select.add(new Option(name, name)));
+
         if (!names.length) throw new Error('ยังไม่มีรายชื่อพนักงานของสาขานี้ กรุณาติดต่อผู้ดูแล');
         const entry = pending();
         if (ours(entry)) {
           select.value = entry.name;
           note.value = entry.payload.note.slice(MARKER.length).replace(/^\s*\|\s*/, '');
           say('รายการก่อนหน้ายังไม่ทราบผล ตรวจตารางหรือส่งรายการเดิมอีกครั้งได้');
-        } else say('เลือกชื่อของคุณ แล้วกดยืนยันเพื่อบันทึกเวลา');
+        } else say('พิมพ์ชื่อ–นามสกุล แล้วถ่ายรูปหลักฐานก่อนยืนยันลงเวลา');
       } catch (error) {
         if (run === generation && opened) {names = []; say(error.message || 'โหลดรายชื่อไม่สำเร็จ', true);}
       } finally {
@@ -72,7 +78,7 @@
       panel.hidden = !opened;
       document.body.classList.toggle('manual-attendance-active', opened);
       if (!opened) {
-        generation++; loading = false; options.close(); button.focus(); return;
+        generation++; loading = false; photo.reset(); options.close(); button.focus(); return;
       }
       options.open();
       AttendanceRecovery.record('manual-opened');
@@ -91,23 +97,25 @@
     button.addEventListener('click', open);
     close.addEventListener('click', () => {if (!saving) void open();});
     retry.addEventListener('click', loadNames);
-    select.addEventListener('change', sync);
+    select.addEventListener('input', () => { photo.reset(); sync(); });
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      if (saving || saved || options.busy() || !names.includes(select.value)) return;
+      if (saving || saved || options.busy() || !selectedName()) return;
       if (!form.reportValidity()) return;
       const entry = pending();
-      if (entry && (!ours(entry) || !protocol || entry.name !== select.value)) {sync(); return;}
-      const name = select.value;
-      const message = MARKER + (note.value.trim() ? ' | ' + note.value.trim() : '');
+      if (entry && (!ours(entry) || !protocol || entry.name !== selectedName())) {sync(); return;}
+      if (!entry && !photo.valid()) return;
+      const name = selectedName();
+      let message = MARKER + (note.value.trim() ? ' | ' + note.value.trim() : '');
       saving = true; options.lock(true); sync(); say('กำลังตรวจ GPS และบันทึกเวลา...');
       try {
         // Refresh the existing branch GPS rule immediately before every send/retry.
         const location = await options.prepareLocation();
         protocol = location.safeRetry;
         if (pending() && !protocol) throw new Error('กรุณาตรวจรายการค้างในตารางก่อนเริ่มรายการใหม่');
+        if (!entry) message += ' | ' + await photo.upload(name);
         const result = await options.send(name, message, location);
-        saved = true; form.hidden = true;
+        saved = true; photo.reset(); form.hidden = true;
         const action = result.mode === 'in' ? 'บันทึกเวลาเข้างานแล้ว' : result.mode === 'out' ? 'บันทึกเวลาออกงานแล้ว' :
           options.siteCheckin ? 'บันทึกเช็กอินหน้างานแล้ว' : 'บันทึกเวลาเรียบร้อยแล้ว';
         say('✓ ' + action + (result.time ? ' ' + result.time + ' น.' : '') + ' — ' + name);

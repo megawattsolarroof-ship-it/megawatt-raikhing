@@ -349,7 +349,7 @@
     @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
   </style>
   <link rel="stylesheet" href="css/attendance-design.css?v=20260928-1">
-  <link rel="stylesheet" href="css/manual-attendance.css?v=20261029-m2">
+  <link rel="stylesheet" href="css/manual-attendance.css?v=20261029-photo1">
 </head>
 <body class="aio-design aio-scan">
 <div class="page-wrap">
@@ -380,13 +380,31 @@
     <button type="button" id="btnManualAttendance" class="manual-attendance-toggle" aria-expanded="false" aria-controls="manualAttendancePanel">สแกนไม่ได้? ลงเวลาโดยไม่สแกนหน้า</button>
     <div id="manualAttendancePanel" class="manual-attendance-panel" hidden>
       <h3>ลงเวลาโดยไม่สแกนหน้า</h3>
-      <p>เลือกชื่อของคุณแล้วกดยืนยัน ระบบจะบันทึกเวลาทันทีพร้อมหมายเหตุว่าไม่ได้สแกนหน้า และยังตรวจ GPS ตามพื้นที่ที่กำหนด</p>
+      <p>พิมพ์ชื่อ–นามสกุล ถ่ายรูปหลักฐาน แล้วกดยืนยัน ระบบจะลงเวลาอัตโนมัติและยังตรวจ GPS ตามพื้นที่ที่กำหนด</p>
       <p id="manualModeHint"></p>
       <form id="manualAttendanceForm">
-        <label for="manualEmployee">ชื่อพนักงาน</label>
-        <select id="manualEmployee" required aria-describedby="manualModeHint"><option value="">เลือกชื่อของคุณ</option></select>
+        <label for="manualEmployee">ชื่อจริง–นามสกุลจริง</label>
+        <input id="manualEmployee" type="text" required maxlength="200" autocomplete="name" placeholder="พิมพ์ชื่อ–นามสกุลตามที่ลงทะเบียน" aria-describedby="manualNameHint manualModeHint">
+        <p id="manualNameHint">ชื่อจะต้องตรงกับรายชื่อพนักงานของสาขานี้</p>
         <label for="manualNote">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
         <input id="manualNote" type="text" maxlength="300" placeholder="เช่น กล้องเปิดไม่ได้ หรือสแกนไม่พบหน้า">
+        <fieldset class="manual-photo" id="manualPhoto">
+          <legend>ภาพหลักฐานการลงเวลา</legend>
+          <p>ถ่ายรูปตัวเองให้เห็นหน้าชัด ภาพจะถูกเก็บให้ผู้ดูแลตรวจย้อนหลัง ไม่ใช้ระบบจดจำใบหน้า และจะส่งเมื่อคุณกดยืนยันลงเวลา</p>
+          <video id="manualPhotoVideo" autoplay muted playsinline hidden aria-label="กล้องถ่ายภาพหลักฐาน"></video>
+          <img id="manualPhotoPreview" hidden alt="ภาพหลักฐานที่คุณกำลังจะส่ง">
+          <div class="manual-secondary">
+            <button type="button" id="manualPhotoStart">เปิดกล้องถ่ายรูป</button>
+            <button type="button" id="manualPhotoCapture" hidden>ถ่ายรูปนี้</button>
+            <button type="button" id="manualPhotoSkip" hidden>ลงเวลาโดยไม่มีภาพ</button>
+          </div>
+          <p id="manualPhotoStatus" role="status" aria-live="polite">พิมพ์ชื่อ–นามสกุลให้ตรงกับรายชื่อพนักงาน แล้วเปิดกล้อง</p>
+          <div id="manualPhotoReasonWrap" hidden>
+            <label for="manualPhotoReason">เหตุผลที่ไม่มีภาพ</label>
+            <input id="manualPhotoReason" type="text" maxlength="200" placeholder="เช่น กล้องเสีย หรือไม่สามารถเปิดกล้องได้">
+          </div>
+        </fieldset>
+
         <button id="manualSubmit" class="manual-submit" type="submit" disabled>ยืนยันลงเวลาเข้า–ออกงาน</button>
         <div class="manual-secondary">
           <button id="manualReloadNames" type="button">โหลดรายชื่อใหม่</button>
@@ -432,7 +450,8 @@
 </div>
 
 <script src="js/attendance-recovery.js?v=20261029-r4"></script>
-<script src="js/manual-attendance.js?v=20261029-m1"></script>
+<script src="js/manual-photo.js?v=20261029-photo1"></script>
+<script src="js/manual-attendance.js?v=20261029-photo1"></script>
 <script>
   const API_URL        = localStorage.getItem('gasApiUrl') || GAS_API_URL;
   const APP_KEY        = localStorage.getItem('appKey') || '';
@@ -850,6 +869,18 @@
 
   ManualAttendance.mount({
     endpoint: API_URL,
+    uploadPhoto: async payload => {
+      if (API_URL !== GAS_API_URL) throw new Error('ไม่รองรับภาพสำหรับเซิร์ฟเวอร์ที่ตั้งค่าเอง');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
+      try {
+        const response = await fetch('/api/evidence', { method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({...payload, key:APP_KEY}), signal:controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error('ยังเก็บภาพไม่สำเร็จ');
+        return result;
+      } finally {clearTimeout(timer);}
+    },
     target: APP_SITE,
     siteCheckin: false,
     busy: () => savingAttendance,

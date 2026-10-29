@@ -1,0 +1,8 @@
+{
+  "branch": "megawatt-raikhing",
+  "upstream": "https://script.google.com/macros/s/AKfycbyv2qNse7C4EV3Klw8JxhsozdYkpz6hM1F9pmGIl7v5JW7qJHTPEQ9TdiNfp5AX4Zkb/exec",
+  "site": "raikhing",
+  "origins": [
+    "https://megawatt-raikhing.vercel.app"
+  ]
+}

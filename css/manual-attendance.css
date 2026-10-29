@@ -15,3 +15,8 @@
 .manual-attendance-panel a {color:#075b9b;text-decoration:underline;}
 .manual-attendance [hidden] {display:none!important;}
 .manual-attendance-active .video-container,.manual-attendance-active #btnStart,.manual-attendance-active .status-area {display:none!important;}
+
+.manual-photo {margin:18px 0;padding:14px;border:1px solid #d9e1e7;border-radius:12px;min-width:0;}
+.manual-photo legend {font-weight:600;font-size:15px;}
+.manual-photo video,.manual-photo img {display:block;width:100%;max-height:360px;object-fit:contain;background:#17232c;border-radius:10px;margin:12px 0;}
+.manual-photo video {transform:scaleX(-1);}
