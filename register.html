@@ -12,7 +12,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#06151D">
   <script src="js/api-config.js"></script>
-  <script src="js/face-support.js?v=20260928-r2"></script>
+  <script src="js/camera-session.js?v=20261029-aio1"></script>
+  <script src="js/scan-engine.js?v=20261029-aio1"></script>
+  <script src="js/face-support.js?v=20261029-aio1"></script>
   <style>
     :root {
       --bg: #06151D;
@@ -332,7 +334,7 @@
       statusDiv.textContent = '❌ เตรียมระบบไม่สำเร็จ: ' + error.message;
       statusDiv.style.color = '#ff6b6b';
       btnCamera.textContent = '↻ ลองเตรียมระบบใหม่';
-      btnCamera.onclick = initModels;
+      btnCamera.onclick = FaceSupport.requiresReload() ? () => location.reload() : initModels;
       btnCamera.disabled = false;
       btnCamera.hidden = false;
     } finally {
@@ -343,10 +345,11 @@
   async function loadKnownFaces() {
     const data = await FaceSupport.fetchJSON(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY));
     if (!Array.isArray(data)) throw new Error('ข้อมูลพนักงานไม่ถูกต้อง กรุณาลองใหม่');
-    knownFaces = data.map(u => ({ name: u.label, descriptor: new Float32Array(u.descriptor) }));
+    knownFaces = FaceSupport.toKnownFaces(data);
   }
 
   async function startCamera() {
+    if (FaceSupport.requiresReload()) { location.reload(); return; }
     if (!modelsReady || isCapturing || savingRegistration || registrationComplete) return;
     btnCamera.hidden = true;
     btnSave.disabled = true;

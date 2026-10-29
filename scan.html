@@ -12,7 +12,9 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#06151D">
   <script src="js/api-config.js"></script>
-  <script src="js/face-support.js?v=20260928-r2"></script>
+  <script src="js/camera-session.js?v=20261029-aio1"></script>
+  <script src="js/scan-engine.js?v=20261029-aio1"></script>
+  <script src="js/face-support.js?v=20261029-aio1"></script>
   <style>
     :root {
       --bg: #06151D;
@@ -424,8 +426,8 @@
   // MIN_DETECT_SCORE : ความชัดของใบหน้าขั้นต่ำ เฟรมที่มัว/มืดจะถูกข้ามไม่นำมาตัดสิน
   const MATCH_THRESHOLD  = 0.42;
   const MATCH_MARGIN     = 0.05;
-  const CONFIRM_FRAMES   = 3;
-  const MIN_DETECT_SCORE = 0.6;
+  const CONFIRM_FRAMES   = FaceSupport.policy.confirmFrames;
+  const MIN_DETECT_SCORE = FaceSupport.policy.minScore;
 
   let knownFaces    = [];
   let checkedInToday = {};   // ชื่อ → true ถ้าวันนี้มีเวลาเข้าแล้ว (สแกนถัดไป = ออกงาน)
@@ -484,6 +486,8 @@
       AttendanceRecovery.record('prepare');
       configPromise = FaceSupport.fetchJSON(API_URL + '?action=getConfig&scope=attendance&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY));
       configPromise.catch(() => {});
+      const modelsReady = FaceSupport.loadModels();
+      modelsReady.catch(() => {});
       const facesReady = loadFaceDatabase();
       facesReady.catch(() => {});
       mainStatus.innerText = '1/4 ตรวจสอบ GPS...';
@@ -491,8 +495,7 @@
       await checkGPS();
       mainStatus.innerText = '2/4 โหลด AI Model...';
       overlayStatus.innerText = 'กำลังโหลดระบบสแกน';
-      await FaceSupport.loadModels();
-      await facesReady;
+      await Promise.all([modelsReady, facesReady]);
       systemReady = true;
       AttendanceRecovery.record('ready');
       mainStatus.innerText = '✅ ระบบพร้อมใช้งาน';
@@ -595,7 +598,7 @@
     overlayStatus.innerText = 'กำลังโหลดข้อมูลพนักงาน';
     const data = await FaceSupport.fetchJSON(API_URL + '?action=getKnownFaces&site=' + encodeURIComponent(APP_SITE) + '&key=' + encodeURIComponent(APP_KEY));
     if (!Array.isArray(data) || data.length === 0) throw new Error('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
-    knownFaces = data.map(u => ({ name: u.label, descriptor: new Float32Array(u.descriptor) }));
+    knownFaces = FaceSupport.toKnownFaces(data);
     
   }
 
@@ -628,82 +631,73 @@
   function startScanLoop() {
     stopScanLoop();
     document.getElementById('scanLine').classList.add('active');
-    confirmName  = null;
-    confirmCount = 0;
-    overlayStatus.innerText      = 'มองกล้องเพื่อสแกน';
-    overlayStatus.style.background = 'rgba(6,21,29,0.85)';
-    overlayStatus.style.color = '#D1F7F2';
-    overlayStatus.style.border = '1px solid #144A46';
-
-    scanDeadline = setTimeout(() => cameraFailure('ยังยืนยันใบหน้าไม่ได้ภายใน 30 วินาที กรุณาอยู่ในที่สว่าง มองกล้องตรง ๆ แล้วลองใหม่ หรือแจ้งผู้ดูแล'), 30000);
+    overlayStatus.textContent = 'มองกล้องเพื่อสแกน';
+    overlayStatus.style.color = 'var(--text)';
+    let frameErrors = 0;
+    let lastFaceAt = Date.now();
     const run = scanGeneration;
-    const isCurrent = () => run === scanGeneration && camera.isReady();
+    const active = () => run === scanGeneration && camera.isActive();
+    const isCurrent = () => active() && camera.isReady();
+    scanDeadline = setTimeout(() => {
+      if (active()) cameraFailure('ยังยืนยันใบหน้าไม่ได้ภายใน 30 วินาที กรุณาปรับแสงและมุมกล้องแล้วลองใหม่');
+    }, 30000);
     const tick = async () => {
-      if (!isCurrent()) return;
+      if (!active()) return;
       try {
-
-        const detection = await FaceSupport.detect(video, isCurrent);
-        if (!isCurrent()) return;
-
-        // ไม่เจอหน้า หรือเฟรมไม่ชัดพอ → ไม่นำมาตัดสิน และเริ่มนับใหม่
-        if (!detection || detection.detection.score < MIN_DETECT_SCORE) {
-          confirmName  = null;
-          confirmCount = 0;
+        if (!camera.isReady()) {
+          confirmName = null; confirmCount = 0;
+          overlayStatus.textContent = 'กำลังรอภาพจากกล้อง...';
           return;
         }
-
+        const detection = await FaceSupport.detect(video, isCurrent);
+        if (!isCurrent()) return;
+        frameErrors = 0;
+        if (!detection || detection.detection.score < MIN_DETECT_SCORE) {
+          confirmName = null; confirmCount = 0;
+          overlayStatus.textContent = !detection
+            ? 'ยังไม่เจอใบหน้า — ขยับหน้าเข้ากลางกรอบ'
+            : 'ภาพไม่ชัดพอ — เข้าใกล้กล้องหรือหาที่สว่างขึ้น';
+          if (Date.now() - lastFaceAt >= 15000) {
+            mainStatus.textContent = 'ยังสแกนไม่ติด กรุณาปรับแสงและมุมกล้อง หรือแตะเริ่มใหม่';
+            btnStart.textContent = '📷 เริ่มสแกนใหม่';
+            btnStart.style.display = 'inline-block';
+          }
+          return;
+        }
+        lastFaceAt = Date.now();
         const { best, runnerUp } = findBestMatch(detection.descriptor);
         const passThreshold = best.distance < MATCH_THRESHOLD;
-        const passMargin    = !runnerUp || (runnerUp.distance - best.distance) >= MATCH_MARGIN;
-
+        const passMargin = !runnerUp || runnerUp.distance - best.distance >= MATCH_MARGIN;
         if (passThreshold && passMargin) {
-          // ต้องเป็นคนเดิมติดต่อกันครบ CONFIRM_FRAMES เฟรม จึงยืนยัน
-          if (best.name === confirmName) {
-            confirmCount++;
-          } else {
-            confirmName  = best.name;
-            confirmCount = 1;
-          }
-
+          if (best.name === confirmName) confirmCount++;
+          else { confirmName = best.name; confirmCount = 1; }
           if (confirmCount >= CONFIRM_FRAMES) {
-            stopScanLoop();
-            document.getElementById('scanLine').classList.remove('active');
-            showModal(best);
-          } else {
-            overlayStatus.innerText        = '🔎 กำลังยืนยันตัวตน ' + confirmCount + '/' + CONFIRM_FRAMES;
-            overlayStatus.style.background = 'rgba(74,242,215,0.12)';
-            overlayStatus.style.color      = '#4AF2D7';
-            overlayStatus.style.border     = '1px solid rgba(74,242,215,0.5)';
-          }
+            stopScanLoop(); btnStart.style.display = 'none'; showModal(best);
+          } else overlayStatus.textContent = '🔎 กำลังยืนยันตัวตน ' + confirmCount + '/' + CONFIRM_FRAMES;
         } else {
-          confirmName  = null;
-          confirmCount = 0;
-          if (passThreshold && !passMargin) {
-            // ใกล้เคียงกัน 2 คนเกินไป — ไม่เดา ให้ขยับหน้าเข้าใกล้กล้อง
-            overlayStatus.innerText        = 'ใบหน้ากำกวม กรุณาเข้าใกล้กล้องขึ้น';
-            overlayStatus.style.background = 'rgba(251,191,36,0.12)';
-            overlayStatus.style.color      = '#fbbf24';
-            overlayStatus.style.border     = '1px solid rgba(251,191,36,0.5)';
-          } else {
-            overlayStatus.innerText        = 'ไม่รู้จัก (' + best.distance.toFixed(2) + ')';
-            overlayStatus.style.background = 'rgba(255,107,107,0.12)';
-            overlayStatus.style.color      = '#ff6b6b';
-            overlayStatus.style.border     = '1px solid rgba(255,107,107,0.5)';
-          }
+          confirmName = null; confirmCount = 0;
+          overlayStatus.textContent = passThreshold
+            ? 'ใบหน้ากำกวม กรุณาเข้าใกล้กล้องขึ้น'
+            : 'ยังจับคู่ใบหน้าไม่ได้ กรุณามองตรงและปรับแสง';
         }
       } catch (error) {
-        if (run === scanGeneration) cameraFailure('ตรวจใบหน้าไม่สำเร็จ: ' + error.message);
+        if (!active()) return;
+        confirmName = null; confirmCount = 0;
+        // All in One tolerates transient frame errors; only repeated errors reset the scanner.
+        if (FaceSupport.requiresReload() || ++frameErrors >= 3) {
+          FaceSupport.useCPUAfterFailure();
+          cameraFailure('ตัวตรวจจับภาพทำงานผิดพลาด กรุณาแตะเริ่มระบบสแกนใหม่');
+        } else overlayStatus.textContent = 'กำลังตรวจภาพอีกครั้ง กรุณามองกล้อง';
       } finally {
-        if (isCurrent()) scanInterval = setTimeout(tick, 160);
+        if (active()) scanInterval = setTimeout(tick, FaceSupport.policy.scanGapMs);
       }
     };
-    scanInterval = setTimeout(tick, 160);
+    scanInterval = setTimeout(tick, FaceSupport.policy.scanGapMs);
   }
 
-  // จับคู่แบบ "ระยะที่ดีที่สุดต่อคน" แล้วคืนทั้งอันดับ 1 และอันดับ 2 (คนละคนกัน)
-  // เพื่อเช็กว่าอันดับ 1 ชนะขาดจริง ไม่ใช่เฉือนกันจนเสี่ยงจับผิดคน
+
   function findBestMatch(queryDesc) {
-    const byName = {};
+    const byName = Object.create(null);
     knownFaces.forEach(u => {
       const d = faceapi.euclideanDistance(queryDesc, u.descriptor);
       if (byName[u.name] === undefined || d < byName[u.name]) byName[u.name] = d;
@@ -809,6 +803,10 @@
     if (!API_URL) {
       btnStart.textContent = 'ตั้งค่าระบบ';
       btnStart.onclick = () => { location.href = 'config.html'; };
+    }
+    if (FaceSupport.requiresReload()) {
+      btnStart.textContent = '↻ เริ่มระบบสแกนใหม่';
+      btnStart.onclick = () => location.reload();
     }
     btnStart.disabled = false;
     btnStart.style.display = 'inline-block';
