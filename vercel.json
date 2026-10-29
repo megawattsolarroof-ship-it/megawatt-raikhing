@@ -22,6 +22,15 @@
   "functions": {
     "api/evidence.js": {
       "maxDuration": 30
+    },
+    "api/cleanup-evidence.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cleanup-evidence",
+      "schedule": "0 20 * * *"
+    }
+  ]
 }
