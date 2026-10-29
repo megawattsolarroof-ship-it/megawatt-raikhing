@@ -14,4 +14,4 @@
 .manual-attendance-panel .manual-error {color:#b42318;}
 .manual-attendance-panel a {color:#075b9b;text-decoration:underline;}
 .manual-attendance [hidden] {display:none!important;}
-.manual-attendance-active .video-container,.manual-attendance-active #btnStart,.manual-attendance-active .status-area,.manual-attendance-active #attendanceHelp {display:none!important;}
+.manual-attendance-active .video-container,.manual-attendance-active #btnStart,.manual-attendance-active .status-area {display:none!important;}

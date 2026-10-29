@@ -52,6 +52,7 @@
     const panel = document.getElementById('attendanceHelp');
     const control = panel && panel.querySelector('[data-pending-control]');
     if (control) control.hidden = !read();
+    if (panel && document.getElementById("btnManualAttendance")) panel.hidden = !read();
   }
   function showReport(panel) {
     const box = panel.querySelector('[data-report]');
@@ -75,6 +76,7 @@
     const panel = document.getElementById('attendanceHelp');
     if (panel) {
       panel.open = true;
+      if (document.getElementById("btnManualAttendance")) panel.hidden = !read();
       panel.querySelector('[data-recovery-message]').textContent = message || 'กรุณาส่งรายงานนี้ให้ผู้ดูแลตรวจสอบเวลา';
     }
   }
@@ -92,7 +94,15 @@
       '<button type="button" data-copy hidden>คัดลอกข้อความรายงาน</button><p data-report-status role="status" aria-live="polite"></p>' +
       '<div data-pending-control hidden><p>มีรายการที่ยังไม่ทราบผล ต้องตรวจตารางหรือให้ผู้ดูแลตรวจสอบก่อนล้างสถานะ ปุ่มนี้ล้างเฉพาะสถานะค้างในเครื่อง ไม่ลบหรือแก้ข้อมูลใน Google Sheet และไม่ได้ลงเวลาให้</p>' +
       '<button type="button" data-clear>ตรวจตารางแล้ว — ล้างสถานะค้างในเครื่อง</button></div>';
-    (document.querySelector('.page-wrap') || document.querySelector('main') || document.body).appendChild(panel);
+    const host = document.querySelector('.page-wrap') || document.querySelector('main') || document.body;
+    const manual = document.querySelector('.manual-attendance');
+    if (manual) {
+      // The fallback replaces the old help entry at the same location.
+      host.appendChild(manual);
+      panel.querySelector('summary').textContent = 'ตรวจสอบรายการที่ยังไม่ยืนยัน';
+      panel.hidden = !read();
+    }
+    host.appendChild(panel);
     panel.querySelector('[data-preview]').onclick = () => showReport(panel);
     panel.querySelector('[data-download]').onclick = () => {
       const box = showReport(panel);
